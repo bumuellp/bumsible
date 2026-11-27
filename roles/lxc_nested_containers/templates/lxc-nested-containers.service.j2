@@ -1,0 +1,20 @@
+[Unit]
+Description=Prepare LXC container for nested container runtimes (/dev/kmsg and shared root mount)
+DefaultDependencies=no
+After=local-fs.target
+{% if lxc_nested_containers_before_units | length > 0 %}
+Before={{ lxc_nested_containers_before_units | join(' ') }}
+{% endif %}
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+{% if lxc_nested_containers_create_dev_kmsg | bool %}
+ExecStart=/bin/sh -c 'ln -sf /dev/console /dev/kmsg'
+{% endif %}
+{% if lxc_nested_containers_make_root_rshared | bool %}
+ExecStart=/bin/mount --make-rshared /
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target

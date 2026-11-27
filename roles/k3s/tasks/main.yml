@@ -1,0 +1,49 @@
+---
+- name: Validate k3s_mode is server or agent
+  ansible.builtin.assert:
+    that:
+      - k3s_mode in ['server', 'agent']
+    fail_msg: "k3s_mode must be 'server' or 'agent', got '{{ k3s_mode }}'."
+
+- name: Check whether K3s binary is already installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k3s
+  register: k3s_binary_stat
+
+- name: Download K3s install script
+  ansible.builtin.get_url:
+    url: "{{ k3s_install_url }}"
+    dest: /usr/local/src/k3s-install.sh
+    mode: "0700"
+    checksum: "{{ k3s_install_checksum | default(omit, true) }}"
+  when: not k3s_binary_stat.stat.exists
+
+- name: Configure systemd override directory for K3s service
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ k3s_systemd_unit }}.service.d"
+    state: directory
+    mode: "0755"
+  when: k3s_memlock_infinity | bool
+
+- name: Install systemd override for LimitMEMLOCK=infinity
+  ansible.builtin.template:
+    src: systemd-override.conf.j2
+    dest: "/etc/systemd/system/{{ k3s_systemd_unit }}.service.d/override.conf"
+    mode: "0644"
+  notify: Restart k3s
+  when: k3s_memlock_infinity | bool
+
+- name: Remove systemd override when LimitMEMLOCK=infinity is disabled
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ k3s_systemd_unit }}.service.d/override.conf"
+    state: absent
+  notify: Restart k3s
+  when: not (k3s_memlock_infinity | bool)
+
+- name: Include K3s server tasks
+  ansible.builtin.include_tasks: server.yml
+  when: k3s_mode == 'server'
+
+- name: Include K3s agent tasks
+  ansible.builtin.include_tasks: agent.yml
+  when: k3s_mode == 'agent'

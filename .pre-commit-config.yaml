@@ -1,0 +1,12 @@
+---
+repos:
+  - repo: https://github.com/bumuellp/cabumtain-hook
+    rev: v1.9.1
+    hooks:
+      - id: commit-msg
+        stages: [commit-msg]
+      - id: secret-scan
+      - id: yaml-xml-lint
+      - id: ansible-lint
+      - id: trivy-config
+      - id: trivy-fs

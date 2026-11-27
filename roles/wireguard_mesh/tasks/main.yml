@@ -1,0 +1,98 @@
+---
+- name: Ensure WireGuard tools are installed on Debian-family hosts
+  ansible.builtin.apt:
+    name: wireguard-tools
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Ensure WireGuard tools are installed on non-Debian hosts
+  ansible.builtin.package:
+    name: wireguard-tools
+    state: present
+  when: ansible_facts['os_family'] != 'Debian'
+
+- name: Check whether WireGuard kernel module is already available
+  ansible.builtin.stat:
+    path: /sys/module/wireguard
+  register: wireguard_mesh_sys_module
+  when: wireguard_mesh_manage_kernel_module | bool
+
+- name: Ensure WireGuard kernel module is loaded on VMs and bare metal
+  community.general.modprobe:
+    name: wireguard
+    state: present
+  when:
+    - wireguard_mesh_manage_kernel_module | bool
+    - not wireguard_mesh_sys_module.stat.exists
+
+- name: Persist WireGuard kernel module loading across reboots
+  ansible.builtin.copy:
+    content: "wireguard\n"
+    dest: /etc/modules-load.d/wireguard.conf
+    mode: "0644"
+  when: wireguard_mesh_manage_kernel_module | bool
+
+- name: Ensure /etc/wireguard directory exists
+  ansible.builtin.file:
+    path: /etc/wireguard
+    state: directory
+    mode: "0700"
+
+- name: Generate WireGuard private key if not already present
+  ansible.builtin.shell:
+    cmd: set -o pipefail && umask 077 && wg genkey | tee /etc/wireguard/private.key | wg pubkey > /etc/wireguard/public.key
+    executable: /bin/bash
+    creates: /etc/wireguard/private.key
+  no_log: true
+
+- name: Read WireGuard private key
+  ansible.builtin.slurp:
+    src: /etc/wireguard/private.key
+  register: wireguard_mesh_private_key_raw
+  no_log: true
+
+- name: Read WireGuard public key
+  ansible.builtin.slurp:
+    src: /etc/wireguard/public.key
+  register: wireguard_mesh_public_key_raw
+
+- name: Expose WireGuard keys as host facts for mesh peering
+  ansible.builtin.set_fact:
+    wireguard_mesh_private_key: "{{ wireguard_mesh_private_key_raw.content | b64decode | trim }}"
+    wireguard_mesh_public_key: "{{ wireguard_mesh_public_key_raw.content | b64decode | trim }}"
+  no_log: true
+
+- name: Verify WireGuard mesh inventory group is defined and non-empty
+  ansible.builtin.assert:
+    that:
+      - groups[wireguard_mesh_group] is defined
+      - groups[wireguard_mesh_group] | length > 0
+    fail_msg: >-
+      Inventory group '{{ wireguard_mesh_group }}' is missing or empty;
+      set wireguard_mesh_group to a populated inventory group.
+
+- name: Verify all WireGuard mesh peers have required inventory and key facts
+  ansible.builtin.assert:
+    that:
+      - hostvars[item]['wireguard_ip'] is defined
+      - hostvars[item]['wireguard_mesh_public_key'] is defined
+    fail_msg: >-
+      Peer {{ item }} is missing wireguard_ip or wireguard_mesh_public_key;
+      ensure wireguard_mesh runs against all {{ wireguard_mesh_group }} hosts in the same play.
+  loop: "{{ groups[wireguard_mesh_group] }}"
+
+- name: Deploy WireGuard mesh interface configuration
+  ansible.builtin.template:
+    src: wg0.conf.j2
+    dest: "/etc/wireguard/{{ wireguard_mesh_interface }}.conf"
+    mode: "0600"
+  notify: Restart wireguard_mesh
+  no_log: true
+
+- name: Ensure wg-quick service is enabled and running
+  ansible.builtin.service:
+    name: "wg-quick@{{ wireguard_mesh_interface }}"
+    enabled: true
+    state: started

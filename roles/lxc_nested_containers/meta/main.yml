@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  author: Patrick Bumueller
+  description: Generic LXC prerequisites (/dev/kmsg symlink and rshared root mount) for nested containers.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+dependencies: []

@@ -1,0 +1,7 @@
+---
+linux_baseline_packages: >-
+  {{ ['curl', 'gnupg', 'ca-certificates', 'jq', 'iproute2', 'nftables', 'iptables']
+  if (ansible_facts['os_family'] | default('Debian')) == 'Debian'
+  else ['curl', 'gnupg2', 'ca-certificates', 'jq', 'iproute', 'nftables', 'iptables'] }}
+linux_baseline_sysctl_file: /etc/sysctl.d/99-bumsible-baseline.conf
+linux_baseline_sysctls: {}

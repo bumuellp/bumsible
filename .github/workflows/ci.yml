@@ -1,0 +1,12 @@
+---
+name: CI
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    uses: bumuellp/lights-camera-bum-action/.github/workflows/ci.yml@79d457390a2d0e660efa4a1f2712966dc4d05854  # v1.18.0

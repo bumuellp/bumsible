@@ -1,0 +1,16 @@
+---
+- name: Harden Linux hosts (SSH, sudo admin user, UFW firewall, and baseline packages)
+  hosts: "{{ target_hosts | default('all') }}"
+  become: true
+  gather_facts: true
+  pre_tasks:
+    - name: Run optional user-supplied pre-tasks file
+      ansible.builtin.include_tasks: "{{ bumsible_pre_tasks_file | default('') }}"
+      when: bumsible_pre_tasks_file | default('') | length > 0
+  roles:
+    - role: bumuellp.bumsible.host_security
+    - role: bumuellp.bumsible.linux_baseline
+  post_tasks:
+    - name: Run optional user-supplied post-tasks file
+      ansible.builtin.include_tasks: "{{ bumsible_post_tasks_file | default('') }}"
+      when: bumsible_post_tasks_file | default('') | length > 0

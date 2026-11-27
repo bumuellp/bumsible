@@ -1,0 +1,38 @@
+---
+- name: Install early-boot systemd unit for nested containers inside LXC
+  ansible.builtin.template:
+    src: lxc-nested-containers.service.j2
+    dest: "/etc/systemd/system/{{ lxc_nested_containers_service_name }}"
+    mode: "0644"
+  notify: Restart lxc-nested-containers
+  when:
+    - lxc_nested_containers_enabled | bool
+    - (lxc_nested_containers_create_dev_kmsg | bool) or (lxc_nested_containers_make_root_rshared | bool)
+
+- name: Ensure LXC nested containers prerequisites unit is enabled and started
+  ansible.builtin.systemd:
+    name: "{{ lxc_nested_containers_service_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - lxc_nested_containers_enabled | bool
+    - (lxc_nested_containers_create_dev_kmsg | bool) or (lxc_nested_containers_make_root_rshared | bool)
+
+- name: Inspect configured passthrough device nodes inside LXC
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ lxc_nested_containers_inspect_devices }}"
+  register: lxc_nested_containers_device_stats
+  when:
+    - lxc_nested_containers_enabled | bool
+    - lxc_nested_containers_inspect_devices | length > 0
+
+- name: Report detected passthrough device GIDs inside LXC
+  ansible.builtin.debug:
+    msg: "{{ item.item }} exists={{ item.stat.exists }} gid={{ item.stat.gid | default('N/A') }}"
+    verbosity: 1
+  loop: "{{ lxc_nested_containers_device_stats.results | default([]) }}"
+  when:
+    - lxc_nested_containers_enabled | bool
+    - lxc_nested_containers_inspect_devices | length > 0

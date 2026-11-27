@@ -1,0 +1,6 @@
+---
+- name: Restart lxc-nested-containers
+  ansible.builtin.systemd:
+    name: "{{ lxc_nested_containers_service_name }}"
+    state: restarted
+    daemon_reload: true

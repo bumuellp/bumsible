@@ -1,0 +1,25 @@
+---
+argument_specs:
+  main:
+    short_description: Configure early-boot /dev/kmsg and shared root mount inside LXC containers.
+    options:
+      lxc_nested_containers_enabled:
+        type: bool
+        description: Whether to apply LXC nested container prerequisites (auto-detected by default).
+      lxc_nested_containers_service_name:
+        type: str
+        description: Systemd unit filename installed in /etc/systemd/system.
+      lxc_nested_containers_before_units:
+        type: list
+        elements: str
+        description: Optional list of systemd units that should start after this prerequisite unit.
+      lxc_nested_containers_create_dev_kmsg:
+        type: bool
+        description: Whether to symlink /dev/console to /dev/kmsg at boot.
+      lxc_nested_containers_make_root_rshared:
+        type: bool
+        description: Whether to remount / with --make-rshared at boot.
+      lxc_nested_containers_inspect_devices:
+        type: list
+        elements: str
+        description: Optional list of passthrough device paths to stat and log at verbosity 1.

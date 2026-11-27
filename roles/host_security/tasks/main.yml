@@ -1,0 +1,125 @@
+---
+- name: Guard against SSH lockout when password auth is disabled
+  ansible.builtin.assert:
+    that:
+      - (allow_password_auth | bool) or (ssh_public_keys | length > 0)
+    fail_msg: "Refusing to disable password authentication when ssh_public_keys is empty."
+
+- name: Ensure security packages are installed (Debian/Ubuntu)
+  ansible.builtin.apt:
+    name: "{{ ['sudo', 'openssh-server'] + (['ufw'] if (host_security_manage_ufw | bool) else []) }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Ensure security packages are installed (non-Debian)
+  ansible.builtin.package:
+    name: "{{ ['sudo', 'openssh-server'] + (['ufw'] if (host_security_manage_ufw | bool) else []) }}"
+    state: present
+  when: ansible_facts['os_family'] != 'Debian'
+
+- name: Create restricted SSH login user if distinct from admin user
+  ansible.builtin.user:
+    name: "{{ login_user }}"
+    shell: /bin/bash
+    create_home: true
+    state: present
+  when: login_user != admin_user
+
+- name: Create administrator user
+  ansible.builtin.user:
+    name: "{{ admin_user }}"
+    shell: /bin/bash
+    groups: "{{ host_security_sudo_group }}"
+    append: true
+    create_home: true
+    state: present
+
+- name: Deploy authorized SSH keys for allowed SSH login users
+  ansible.posix.authorized_key:
+    user: "{{ item.0 }}"
+    key: "{{ item.1 }}"
+    state: present
+  loop: "{{ (([login_user] + ([admin_user] if (ssh_allow_admin_login | bool) else [])) | unique) | product(ssh_public_keys) | list }}"
+  when: ssh_public_keys | length > 0
+
+- name: Configure sudoers policy for administrator user
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ admin_user }}"
+    content: "{{ admin_user }} ALL=(ALL:ALL) {{ 'NOPASSWD:ALL' if (admin_sudo_nopasswd | bool) else 'ALL' }}\n"
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: Enforce secure default forward DROP policy in UFW
+  community.general.ufw:
+    default: deny
+    direction: routed
+  notify: Reload ufw
+  when: host_security_manage_ufw | bool
+
+- name: Configure UFW input rules for allowed public ports
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port | string }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment | default('Allowed public port') }}"
+  loop: "{{ host_security_ufw_public_ports }}"
+  when: host_security_manage_ufw | bool
+
+- name: Allow incoming traffic on configured interfaces in UFW
+  community.general.ufw:
+    rule: allow
+    interface: "{{ item.interface }}"
+    direction: "{{ item.direction | default('in') }}"
+    comment: "{{ item.comment | default('Allowed interface traffic') }}"
+  loop: "{{ host_security_ufw_allow_interfaces }}"
+  when:
+    - host_security_manage_ufw | bool
+    - host_security_ufw_allow_interfaces | length > 0
+
+- name: Configure explicit routed interface forwarding rules in UFW
+  community.general.ufw:
+    rule: allow
+    route: true
+    interface_in: "{{ item.in }}"
+    interface_out: "{{ item.out }}"
+    comment: "{{ item.comment | default('Allowed routed interface traffic') }}"
+  loop: "{{ host_security_ufw_route_interfaces }}"
+  when:
+    - host_security_manage_ufw | bool
+    - host_security_ufw_route_interfaces | length > 0
+
+- name: Configure explicit routed CIDR forwarding rules in UFW
+  community.general.ufw:
+    rule: allow
+    route: true
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    comment: "{{ item.comment | default('Allowed routed CIDR traffic') }}"
+  loop: "{{ host_security_ufw_route_cidrs }}"
+  when:
+    - host_security_manage_ufw | bool
+    - host_security_ufw_route_cidrs | length > 0
+
+- name: Enable UFW firewall
+  community.general.ufw:
+    state: enabled
+  when: host_security_manage_ufw | bool
+
+- name: Ensure /run/sshd and /etc/ssh/sshd_config.d exist for sshd validation
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - /run/sshd
+    - /etc/ssh/sshd_config.d
+
+- name: Render hardened SSH drop-in configuration (overrides cloud-init defaults)
+  ansible.builtin.template:
+    src: 00-bumsible-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/00-bumsible-hardening.conf
+    mode: "0600"
+    validate: "/usr/sbin/sshd -t -f %s"
+  notify: Reload sshd

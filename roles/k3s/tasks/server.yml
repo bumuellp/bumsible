@@ -1,0 +1,83 @@
+---
+- name: Build K3s server exec arguments
+  ansible.builtin.set_fact:
+    k3s_server_exec_args: >-
+      {{
+        (['--node-ip=' ~ k3s_node_ip] if (k3s_node_ip | length > 0) else [])
+        + (['--node-external-ip=' ~ k3s_node_external_ip] if (k3s_node_external_ip | length > 0) else [])
+        + (['--flannel-iface=' ~ k3s_flannel_iface] if (k3s_flannel_iface | length > 0) else [])
+        + ['--flannel-backend=' ~ k3s_flannel_backend]
+        + (['--flannel-external-ip'] if (k3s_flannel_external_ip | bool) else [])
+        + ['--cluster-cidr=' ~ k3s_cluster_cidr, '--service-cidr=' ~ k3s_service_cidr]
+        + (k3s_disable_components | map('regex_replace', '^(.*)$', '--disable=\\1') | list)
+        + (k3s_tls_san | map('regex_replace', '^(.*)$', '--tls-san=\\1') | list)
+        + (k3s_node_taints | map('regex_replace', '^(.*)$', '--node-taint=\\1') | list)
+        + (k3s_node_labels | map('regex_replace', '^(.*)$', '--node-label=\\1') | list)
+        + k3s_extra_args
+      }}
+
+- name: Install and start K3s server
+  ansible.builtin.command:
+    argv: "{{ ['/usr/local/src/k3s-install.sh', 'server'] + k3s_server_exec_args }}"
+    creates: /usr/local/bin/k3s
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+    K3S_TOKEN: "{{ k3s_token }}"
+  no_log: true
+
+- name: Ensure K3s server service is enabled and running
+  ansible.builtin.systemd:
+    name: k3s
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for K3s node token file
+  ansible.builtin.wait_for:
+    path: /var/lib/rancher/k3s/server/node-token
+    timeout: 120
+
+- name: Read K3s node token
+  ansible.builtin.slurp:
+    src: /var/lib/rancher/k3s/server/node-token
+  register: k3s_server_node_token_raw
+  no_log: true
+
+- name: Expose K3s cluster token fact
+  ansible.builtin.set_fact:
+    k3s_cluster_token: "{{ k3s_server_node_token_raw.content | b64decode | trim }}"
+  no_log: true
+
+- name: Read kubeconfig from the primary K3s server
+  ansible.builtin.slurp:
+    src: /etc/rancher/k3s/k3s.yaml
+  register: k3s_server_kubeconfig_raw
+  no_log: true
+  run_once: true
+  when: k3s_kubeconfig_dest | length > 0
+
+- name: Ensure local kubeconfig directory exists with restrictive permissions
+  ansible.builtin.file:
+    path: "{{ k3s_kubeconfig_dest | dirname }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when:
+    - k3s_kubeconfig_dest | length > 0
+    - (k3s_kubeconfig_dest | dirname) | length > 0
+
+- name: Write kubeconfig to controller with server address rewritten
+  ansible.builtin.copy:
+    content: >-
+      {{ k3s_server_kubeconfig_raw.content | b64decode
+      | regex_replace('https://127\.0\.0\.1:6443',
+      'https://' ~ (k3s_node_ip | default(ansible_host | default(inventory_hostname), true)) ~ ':6443') }}
+    dest: "{{ k3s_kubeconfig_dest }}"
+    mode: "0600"
+  no_log: true
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when: k3s_kubeconfig_dest | length > 0

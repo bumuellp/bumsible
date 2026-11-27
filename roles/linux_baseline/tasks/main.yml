@@ -1,0 +1,29 @@
+---
+- name: Update apt cache and install baseline packages on Debian-family hosts
+  ansible.builtin.apt:
+    name: "{{ linux_baseline_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when:
+    - ansible_facts['os_family'] == 'Debian'
+    - linux_baseline_packages | length > 0
+
+- name: Install baseline packages on non-Debian hosts
+  ansible.builtin.package:
+    name: "{{ linux_baseline_packages }}"
+    state: present
+  when:
+    - ansible_facts['os_family'] != 'Debian'
+    - linux_baseline_packages | length > 0
+
+- name: Configure requested kernel sysctl parameters
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value | string }}"
+    sysctl_file: "{{ linux_baseline_sysctl_file }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop: "{{ linux_baseline_sysctls | dict2items }}"
+  when: linux_baseline_sysctls | length > 0

@@ -1,0 +1,22 @@
+---
+admin_user: admin
+login_user: ops
+admin_sudo_nopasswd: true
+ssh_port: 22
+ssh_public_keys: []
+allow_password_auth: false
+permit_root_login: false
+ssh_allow_admin_login: false
+ufw_enabled: true
+host_security_manage_ufw: >-
+  {{ (ufw_enabled | bool) and ((ansible_facts['virtualization_type'] | default(''))
+  not in ['lxc', 'lxd', 'docker', 'podman', 'container']) }}
+host_security_sudo_group: >-
+  {{ 'sudo' if (ansible_facts['os_family'] | default('Debian')) == 'Debian' else 'wheel' }}
+host_security_ufw_public_ports:
+  - port: "{{ ssh_port }}"
+    proto: tcp
+    comment: SSH Management
+host_security_ufw_allow_interfaces: []
+host_security_ufw_route_interfaces: []
+host_security_ufw_route_cidrs: []

@@ -1,0 +1,79 @@
+---
+argument_specs:
+  main:
+    short_description: Install and configure K3s in server or agent mode.
+    options:
+      k3s_mode:
+        type: str
+        choices:
+          - server
+          - agent
+        description: Node role in the K3s cluster.
+      k3s_version:
+        type: str
+        description: Optional K3s version pin (empty installs latest stable).
+      k3s_install_url:
+        type: str
+        description: URL of the K3s installation script.
+      k3s_install_checksum:
+        type: str
+        description: Optional checksum for the install script (e.g. sha256:<hex>); empty disables verification.
+      k3s_server_group:
+        type: str
+        description: Inventory group name containing K3s server nodes.
+      k3s_server_url:
+        type: str
+        description: Explicit K3s API URL for agents (auto-resolved from k3s_server_group if empty).
+      k3s_token:
+        type: str
+        description: Optional cluster join token (auto-discovered from primary server if empty).
+      k3s_node_ip:
+        type: str
+        description: IP address advertised by this node (--node-ip).
+      k3s_node_external_ip:
+        type: str
+        description: Optional external IP advertised by this node (--node-external-ip).
+      k3s_flannel_iface:
+        type: str
+        description: Optional network interface for Flannel CNI (--flannel-iface).
+      k3s_flannel_backend:
+        type: str
+        description: Flannel CNI backend (e.g. vxlan, wireguard-native, none).
+      k3s_flannel_external_ip:
+        type: bool
+        description: Enable --flannel-external-ip on server nodes.
+      k3s_disable_components:
+        type: list
+        elements: str
+        description: Packaged K3s components to disable via --disable.
+      k3s_tls_san:
+        type: list
+        elements: str
+        description: Additional TLS Subject Alternative Names for the K3s API certificate.
+      k3s_cluster_cidr:
+        type: str
+        description: Pod network CIDR block.
+      k3s_service_cidr:
+        type: str
+        description: Service network CIDR block.
+      k3s_node_taints:
+        type: list
+        elements: str
+        description: Kubernetes node taints applied on startup.
+      k3s_node_labels:
+        type: list
+        elements: str
+        description: Kubernetes node labels applied on startup.
+      k3s_extra_args:
+        type: list
+        elements: str
+        description: Additional CLI flags passed to the K3s server or agent.
+      k3s_memlock_infinity:
+        type: bool
+        description: Configure LimitMEMLOCK=infinity in systemd override.
+      k3s_kubeconfig_dest:
+        type: str
+        description: Local controller path to fetch kubeconfig when running in server mode.
+      k3s_systemd_unit:
+        type: str
+        description: Systemd unit name (k3s or k3s-agent).
