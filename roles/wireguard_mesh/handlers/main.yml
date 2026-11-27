@@ -1,0 +1,5 @@
+---
+- name: Restart wireguard_mesh
+  ansible.builtin.service:
+    name: "wg-quick@{{ wireguard_mesh_interface }}"
+    state: restarted

@@ -1,0 +1,33 @@
+---
+argument_specs:
+  main:
+    short_description: Configure a full-mesh WireGuard interface across an inventory group.
+    options:
+      wireguard_mesh_port:
+        type: int
+        description: UDP listen port for hosts exposing wireguard_public_endpoint.
+      wireguard_mesh_mtu:
+        type: int
+        description: Interface MTU for the WireGuard tunnel.
+      wireguard_mesh_subnet_prefix:
+        type: int
+        description: CIDR prefix length for the host WireGuard IP address.
+      wireguard_mesh_persistent_keepalive:
+        type: int
+        description: PersistentKeepalive interval in seconds for peers with public endpoints.
+      wireguard_mesh_interface:
+        type: str
+        description: Name of the wg-quick interface (e.g. wg0).
+      wireguard_mesh_group:
+        type: str
+        description: Inventory group name containing all WireGuard mesh peers.
+      wireguard_mesh_manage_kernel_module:
+        type: bool
+        description: Whether to load and persist the wireguard kernel module.
+      wireguard_ip:
+        type: str
+        required: true
+        description: Per-host IPv4 address assigned to the WireGuard interface.
+      wireguard_public_endpoint:
+        type: str
+        description: Optional public host:port endpoint for peers reachable over WAN.

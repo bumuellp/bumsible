@@ -1,0 +1,57 @@
+---
+argument_specs:
+  main:
+    short_description: Harden SSH, configure sudo admin users, and manage UFW firewall rules.
+    options:
+      admin_user:
+        type: str
+        description: Sudo-capable administrative username to create.
+      login_user:
+        type: str
+        description: Allowed SSH login username when ssh_allow_admin_login is false.
+      admin_sudo_nopasswd:
+        type: bool
+        description: Whether admin_user is granted passwordless sudo.
+      ssh_port:
+        type: int
+        description: SSH daemon listening port.
+      ssh_public_keys:
+        type: list
+        elements: str
+        description: >-
+          Authorized SSH public keys installed for login_user, and for admin_user
+          only when ssh_allow_admin_login is true or login_user equals admin_user.
+      host_security_sudo_group:
+        type: str
+        description: Group granting sudo to admin_user (sudo on Debian family, wheel otherwise).
+      allow_password_auth:
+        type: bool
+        description: Whether SSH password authentication is permitted.
+      permit_root_login:
+        type: bool
+        description: Whether SSH root login is permitted.
+      ssh_allow_admin_login:
+        type: bool
+        description: Whether admin_user is added to SSH AllowUsers alongside login_user.
+      ufw_enabled:
+        type: bool
+        description: Whether UFW firewall management is desired.
+      host_security_manage_ufw:
+        type: bool
+        description: Effective flag controlling UFW configuration (skipped inside containers by default).
+      host_security_ufw_public_ports:
+        type: list
+        elements: dict
+        description: Publicly allowed UFW port dicts with port, proto, and optional comment.
+      host_security_ufw_allow_interfaces:
+        type: list
+        elements: dict
+        description: Interface allow rules with interface, optional direction, and optional comment.
+      host_security_ufw_route_interfaces:
+        type: list
+        elements: dict
+        description: Routed forwarding rules with in, out, and optional comment.
+      host_security_ufw_route_cidrs:
+        type: list
+        elements: dict
+        description: Routed CIDR forwarding rules with src, dest, and optional comment.

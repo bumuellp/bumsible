@@ -1,0 +1,6 @@
+Port {{ ssh_port }}
+PermitRootLogin {{ 'yes' if (permit_root_login | bool) else 'no' }}
+PasswordAuthentication {{ 'yes' if (allow_password_auth | bool) else 'no' }}
+KbdInteractiveAuthentication {{ 'yes' if (allow_password_auth | bool) else 'no' }}
+PubkeyAuthentication yes
+AllowUsers {{ (([login_user] + (['root'] if (permit_root_login | bool) else []) + ([admin_user] if (ssh_allow_admin_login | bool) else [])) | unique) | join(' ') }}

@@ -1,0 +1,28 @@
+---
+- name: Smoke syntax check for all bumuellp.bumsible roles
+  hosts: wireguard_mesh
+  gather_facts: false
+  roles:
+    - role: bumuellp.bumsible.host_security
+    - role: bumuellp.bumsible.linux_baseline
+    - role: bumuellp.bumsible.wireguard_mesh
+
+- name: Smoke syntax check for LXC nested containers and K3s server role
+  hosts: k3s_servers
+  gather_facts: false
+  roles:
+    - role: bumuellp.bumsible.lxc_nested_containers
+      vars:
+        lxc_nested_containers_before_units:
+          - k3s.service
+    - role: bumuellp.bumsible.k3s
+      vars:
+        k3s_mode: server
+
+- name: Smoke syntax check for K3s agent role
+  hosts: k3s_agents
+  gather_facts: false
+  roles:
+    - role: bumuellp.bumsible.k3s
+      vars:
+        k3s_mode: agent

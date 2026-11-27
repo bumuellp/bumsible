@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  author: Patrick Bumueller
+  description: Full-mesh WireGuard host configuration role in bumuellp.bumsible.
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+dependencies: []

@@ -1,0 +1,17 @@
+---
+- name: Configure full-mesh WireGuard across target hosts
+  hosts: "{{ target_hosts | default('wireguard_mesh') }}"
+  become: true
+  gather_facts: true
+  pre_tasks:
+    - name: Run optional user-supplied pre-tasks file
+      ansible.builtin.include_tasks: "{{ bumsible_pre_tasks_file | default('') }}"
+      when: bumsible_pre_tasks_file | default('') | length > 0
+  roles:
+    - role: bumuellp.bumsible.wireguard_mesh
+      vars:
+        wireguard_mesh_group: "{{ target_hosts | default('wireguard_mesh') }}"
+  post_tasks:
+    - name: Run optional user-supplied post-tasks file
+      ansible.builtin.include_tasks: "{{ bumsible_post_tasks_file | default('') }}"
+      when: bumsible_post_tasks_file | default('') | length > 0

@@ -1,0 +1,20 @@
+# Host WireGuard Full Mesh Configuration (Managed by bumuellp.bumsible)
+[Interface]
+Address = {{ wireguard_ip }}/{{ wireguard_mesh_subnet_prefix }}
+MTU = {{ wireguard_mesh_mtu }}
+PrivateKey = {{ wireguard_mesh_private_key }}
+{% if wireguard_public_endpoint | default('') | length > 0 %}
+ListenPort = {{ wireguard_mesh_port }}
+{% endif %}
+
+{% for peer in groups[wireguard_mesh_group] if peer != inventory_hostname %}
+[Peer]
+# Peer: {{ peer }} ({{ hostvars[peer]['wireguard_ip'] }})
+PublicKey = {{ hostvars[peer]['wireguard_mesh_public_key'] }}
+AllowedIPs = {{ hostvars[peer]['wireguard_ip'] }}/32
+{% if hostvars[peer]['wireguard_public_endpoint'] | default('') | length > 0 %}
+Endpoint = {{ hostvars[peer]['wireguard_public_endpoint'] }}
+PersistentKeepalive = {{ wireguard_mesh_persistent_keepalive }}
+{% endif %}
+
+{% endfor %}

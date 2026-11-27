@@ -1,0 +1,12 @@
+---
+wireguard_mesh_port: 51820
+# Portable default for Ethernet/VPS WANs; behind PPPoE (1492) or DS-Lite (1452-1460)
+# with nested overlays, override to 1380 or 1360 in host/group inventory vars.
+wireguard_mesh_mtu: 1420
+wireguard_mesh_subnet_prefix: 24
+wireguard_mesh_persistent_keepalive: 25
+wireguard_mesh_interface: wg0
+wireguard_mesh_group: wireguard_mesh
+wireguard_mesh_manage_kernel_module: >-
+  {{ (ansible_facts['virtualization_type'] | default(''))
+  not in ['lxc', 'lxd', 'docker', 'podman', 'container'] }}

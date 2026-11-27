@@ -1,0 +1,15 @@
+---
+argument_specs:
+  main:
+    short_description: Install baseline Linux packages and apply sysctl parameters.
+    options:
+      linux_baseline_packages:
+        type: list
+        elements: str
+        description: List of OS packages to install on target hosts.
+      linux_baseline_sysctl_file:
+        type: str
+        description: Path to the sysctl drop-in file managed by this role.
+      linux_baseline_sysctls:
+        type: dict
+        description: Mapping of sysctl parameter names to string values.

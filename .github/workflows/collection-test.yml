@@ -1,0 +1,23 @@
+---
+name: Collection Test
+
+"on":
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  ansible-test:
+    uses: bumuellp/lights-camera-bum-action/.github/workflows/ansible-test.yml@79d457390a2d0e660efa4a1f2712966dc4d05854  # v1.18.0
+    with:
+      playbooks-glob: "playbooks/*.yml tests/*playbook*.yml"
+      inventory: "tests/inventory.ini"
+      galaxy-file: "galaxy.yml"
+      run-lint: false
+      cache: true
